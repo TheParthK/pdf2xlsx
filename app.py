@@ -1,4 +1,5 @@
 import re
+import uuid
 from pdfminer.high_level import extract_pages, extract_text
 from flask import Flask,request,send_file
 from flask_cors import CORS, cross_origin
@@ -28,13 +29,14 @@ def sample_endpoint():
         return 'no file is uploaded',400
     
     file = request.files['file']
-    file.save('bills_file.pdf')
+    filename = str(uuid.uuid4())
+    file.save(filename+'.pdf')
     
     
     # code to convert the pdf to excel report
     
     i = 0
-    for page_layout in extract_pages('bills.pdf'):
+    for page_layout in extract_pages(filename+'.pdf'):
         for element in page_layout:
             # text = extract_text(element)
 
@@ -45,13 +47,13 @@ def sample_endpoint():
         i += 1
         
     
-    pdf = PDFQuery('bills_file.pdf')
+    pdf = PDFQuery(filename+'.pdf')
     pdf.load()
     invoices = pdf.pq('LTTextBoxHorizontal:in_bbox("109.774,496.869,159.075,504.416")').text()
     i = 0
     df = pd.DataFrame(columns=['Place of Supply', 'Invoice No.', 'Invoice Date', 'Markup Amount', 'Taxable Amount', 'IGST', 'CGST','SGST','Total Amount', 'Bill To'])
 
-    with pdfplumber.open('bills.pdf') as pdf:
+    with pdfplumber.open(filename+'.pdf') as pdf:
         pages = pdf.pages
         for page in pages:
             text = page.extract_text()
@@ -109,9 +111,9 @@ def sample_endpoint():
             if row != [''] * 10:
                 df.loc[len(df)] = row
     # df.to_csv('bills.csv')
-    df.to_excel('delhivery_jan_bills.xlsx', sheet_name='bills', index=False, engine='xlsxwriter')
+    df.to_excel(f'{filename}.xlsx', sheet_name='bills', index=False, engine='xlsxwriter')
     
-    return send_file('delhivery_jan_bills.xlsx', as_attachment=True)
+    return send_file(f'{filename}.xlsx', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(port=8000,debug=True)
